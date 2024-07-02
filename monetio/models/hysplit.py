@@ -617,8 +617,9 @@ class ModelBin:
                         lvldslist += [dset]
                         iimax += 1
                 # END LOOP to go through each pollutant
-                #lvldslist = xr.concat(lvldslist, 'z')
-                poldslist += [lvldslist]
+                if len(lvldslist) > 0:
+                    lvldslist = xr.concat(lvldslist, 'z')
+                    poldslist += [lvldslist]
             # END LOOP to go through each level
             # safety check - will stop sampling time while loop if goes over
             #  imax iterations.
@@ -627,7 +628,8 @@ class ModelBin:
                 print("greater than imax", testf, iimax, imax)
             if inc_iii:
                 iii += 1
-            timedslist += [poldslist]
+            if len(poldslist) > 0:
+                timedslist += [poldslist]
         # END OF Loop to go through each sampling time
         self.atthash.update(self.gridhash)
         self.atthash["Species ID"] = list(set(self.atthash["Species ID"]))
@@ -635,7 +637,8 @@ class ModelBin:
 
         Ns = range(self.atthash["Number of Species"])
         dsets = [[ll[n] for ll in timedslist] for n in Ns]
-        dsets = [xr.combine_nested(ds, concat_dim=['time', 'z']) for ds in dsets]
+        #dsets = [xr.combine_nested(ds, concat_dim=['time', 'z']) for ds in dsets]
+        dsets = [xr.concat(ds, dim='time') for ds in dsets]
         self.dset = xr.merge(dsets)
         if not self.dset.any():
             return False
