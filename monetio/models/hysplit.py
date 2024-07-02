@@ -563,6 +563,7 @@ class ModelBin:
         # Safety valve - will not allow more than 1000 loops to be executed.
         imax = 1e8
         testf = True
+        timedslist = []
         while testf:
             hdata6 = np.fromfile(fid, dtype=rec6, count=1)
             hdata7 = np.fromfile(fid, dtype=rec6, count=1)
@@ -575,8 +576,10 @@ class ModelBin:
             # datelist = []
             inc_iii = False
             # LOOP to go through each level
+            lvldslist = []
             for _ in range(self.atthash["Number of Levels"]):
                 # LOOP to go through each pollutant
+                poldslist = []
                 for _ in range(self.atthash["Number of Species"]):
                     # record 8a has the number of elements (ne). If number of
                     # elements greater than 0 than there are concentrations.
@@ -613,17 +616,15 @@ class ModelBin:
                         #    print("Adding ", "Pollutant", pollutant, "Level", lev)
                         # if this is the first time through. create dataframe
                         # for first level and pollutant.
-                        if not self.dset.any():
-                            self.dset = dset
-                        else:  # create dataframe for level and pollutant and
+                        poldslist += [dset]
+                        #if not self.dset.any():
+                            #self.dset = dset
+                        #else:  # create dataframe for level and pollutant and
                             # then merge with main dataframe.
-                            # self.dset = xr.concat([self.dset, dset],'levels')
-                            # self.dset = xr.merge([self.dset, dset],compat='override')
-                            self.dset = xr.merge([self.dset, dset])
-                            # self.dset = xr.combine_by_coords([self.dset, dset])
-                            # self.dset = xr.merge([self.dset, dset], compat='override')
+                            # self.dset = xr.merge([self.dset, dset])
                         iimax += 1
                 # END LOOP to go through each pollutant
+                lvldslist += [poldslist]
             # END LOOP to go through each level
             # safety check - will stop sampling time while loop if goes over
             #  imax iterations.
@@ -632,11 +633,16 @@ class ModelBin:
                 print("greater than imax", testf, iimax, imax)
             if inc_iii:
                 iii += 1
+            timedslist += [lvldslist]
 
         self.atthash.update(self.gridhash)
         self.atthash["Species ID"] = list(set(self.atthash["Species ID"]))
         self.atthash["Coordinate time description"] = "Beginning of sampling time"
         # END OF Loop to go through each sampling time
+        #print(dsets[0], dsets[1], dsets[-1], '\n\n\n')
+        self.dset = xr.combine_nested(timedslist, concat_dim=['time', 'z', None])
+        print(self.dset)
+        #self.dset = xr.merge(dsets, compat='override')
         if not self.dset.any():
             return False
         if self.dset.variables:
