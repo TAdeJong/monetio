@@ -576,11 +576,11 @@ class ModelBin:
             # datelist = []
             inc_iii = False
             # LOOP to go through each level
-            lvldslist = []
-            for _ in range(self.atthash["Number of Levels"]):
+            poldslist = []
+            for _ in range(self.atthash["Number of Species"]):
                 # LOOP to go through each pollutant
-                poldslist = []
-                for _ in range(self.atthash["Number of Species"]):
+                lvldslist = []
+                for _ in range(self.atthash["Number of Levels"]):
                     # record 8a has the number of elements (ne). If number of
                     # elements greater than 0 than there are concentrations.
                     hdata8a = np.fromfile(fid, dtype=rec8a, count=1)
@@ -614,17 +614,11 @@ class ModelBin:
                         dset = xr.Dataset.from_dataframe(concframe)
                         # if verbose:
                         #    print("Adding ", "Pollutant", pollutant, "Level", lev)
-                        # if this is the first time through. create dataframe
-                        # for first level and pollutant.
-                        poldslist += [dset]
-                        #if not self.dset.any():
-                            #self.dset = dset
-                        #else:  # create dataframe for level and pollutant and
-                            # then merge with main dataframe.
-                            # self.dset = xr.merge([self.dset, dset])
+                        lvldslist += [dset]
                         iimax += 1
                 # END LOOP to go through each pollutant
-                lvldslist += [poldslist]
+                #lvldslist = xr.concat(lvldslist, 'z')
+                poldslist += [lvldslist]
             # END LOOP to go through each level
             # safety check - will stop sampling time while loop if goes over
             #  imax iterations.
@@ -633,16 +627,16 @@ class ModelBin:
                 print("greater than imax", testf, iimax, imax)
             if inc_iii:
                 iii += 1
-            timedslist += [lvldslist]
-
+            timedslist += [poldslist]
+        # END OF Loop to go through each sampling time
         self.atthash.update(self.gridhash)
         self.atthash["Species ID"] = list(set(self.atthash["Species ID"]))
         self.atthash["Coordinate time description"] = "Beginning of sampling time"
-        # END OF Loop to go through each sampling time
-        #print(dsets[0], dsets[1], dsets[-1], '\n\n\n')
-        self.dset = xr.combine_nested(timedslist, concat_dim=['time', 'z', None])
-        print(self.dset)
-        #self.dset = xr.merge(dsets, compat='override')
+
+        Ns = range(self.atthash["Number of Species"])
+        dsets = [[ll[n] for ll in timedslist] for n in Ns]
+        dsets = [xr.combine_nested(ds, concat_dim=['time', 'z']) for ds in dsets]
+        self.dset = xr.merge(dsets)
         if not self.dset.any():
             return False
         if self.dset.variables:
