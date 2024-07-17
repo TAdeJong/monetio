@@ -620,6 +620,8 @@ class ModelBin:
                 if len(lvldslist) > 0:
                     lvldslist = xr.concat(lvldslist, 'z')
                     poldslist += [lvldslist]
+                else:
+                    poldslist += [None]
             # END LOOP to go through each level
             # safety check - will stop sampling time while loop if goes over
             #  imax iterations.
@@ -636,8 +638,8 @@ class ModelBin:
         self.atthash["Coordinate time description"] = "Beginning of sampling time"
 
         Ns = range(self.atthash["Number of Species"])
-        dsets = [[ll[n] for ll in timedslist] for n in Ns]
-        #dsets = [xr.combine_nested(ds, concat_dim=['time', 'z']) for ds in dsets]
+        # Grab per species all relevant datasets in the time list
+        dsets = [[ll[n] for ll in timedslist if ll[n] is not None] for n in Ns]
         dsets = [xr.concat(ds, dim='time') for ds in dsets]
         self.dset = xr.merge(dsets)
         if not self.dset.any():
