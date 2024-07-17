@@ -455,12 +455,13 @@ class ModelBin:
         names = ["y" if x == "jndx" else x for x in names]
         names = ["x" if x == "indx" else x for x in names]
         names = ["z" if x == "levels" else x for x in names]
+        names = [col_name if x == "conc" else x for x in names]
         concframe.columns = names
-        concframe.set_index(
-            ["time", "z", "y", "x"],
-            inplace=True,
-        )
-        concframe.rename(columns={"conc": col_name}, inplace=True)
+        # concframe.set_index(
+        #     ["time", "z", "y", "x"],
+        #     inplace=True,
+        # )
+        #concframe.rename(columns={"conc": col_name}, inplace=True)
         # mgrid = np.meshgrid(lat, lon)
         return concframe
 
@@ -575,11 +576,11 @@ class ModelBin:
                 print("sample time", pdate1, " to ", pdate2)
             # datelist = []
             inc_iii = False
-            # LOOP to go through each level
+            # LOOP to go through each pollutant
             poldslist = []
             for _ in range(self.atthash["Number of Species"]):
-                # LOOP to go through each pollutant
-                lvldslist = []
+                # LOOP to go through each level
+                concframes = []
                 for _ in range(self.atthash["Number of Levels"]):
                     # record 8a has the number of elements (ne). If number of
                     # elements greater than 0 than there are concentrations.
@@ -611,18 +612,22 @@ class ModelBin:
                             concframe = self.parse_hdata8(hdata8a, hdata8b, pdate2)
                         else:
                             concframe = self.parse_hdata8(hdata8a, hdata8b, pdate1)
-                        dset = xr.Dataset.from_dataframe(concframe)
+                        concframes += [concframe]
                         # if verbose:
                         #    print("Adding ", "Pollutant", pollutant, "Level", lev)
-                        lvldslist += [dset]
                         iimax += 1
-                # END LOOP to go through each pollutant
-                if len(lvldslist) > 0:
-                    lvldslist = xr.concat(lvldslist, 'z')
-                    poldslist += [lvldslist]
+                # END LOOP to go through each level
+                if len(concframes) > 0:
+                    concframes = pd.concat(concframes)
+                    concframes.set_index(
+                                    ["time", "z", "y", "x"],
+                                    inplace=True,
+                    )
+                    dset = xr.Dataset.from_dataframe(concframes)
+                    poldslist += [dset]
                 else:
                     poldslist += [None]
-            # END LOOP to go through each level
+            # END LOOP to go through each pollutant
             # safety check - will stop sampling time while loop if goes over
             #  imax iterations.
             if iimax > imax:
