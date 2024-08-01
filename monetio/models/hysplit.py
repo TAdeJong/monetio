@@ -645,10 +645,12 @@ class ModelBin:
         Ns = range(self.atthash["Number of Species"])
         # Grab per species all relevant datasets in the time list
         dsets = [[ll[n] for ll in timedslist if ll[n] is not None] for n in Ns]
-        dsets = [xr.concat(ds, dim='time') for ds in dsets]
-        self.dset = xr.merge(dsets)
-        if not self.dset.any():
+        dsets = [xr.concat(ds, dim='time') for ds in dsets if len(ds) > 0]
+        if len(dsets) == 0:
             return False
+        self.dset = xr.merge(dsets)
+        # if not self.dset.any():
+        #     return False
         if self.dset.variables:
             self.dset.attrs = self.atthash
             # mgrid = self.makegrid(self.dset.coords["x"], self.dset.coords["y"])
